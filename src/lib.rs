@@ -1,10 +1,10 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(dead_code)]
-use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report};
+use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report, SourceSpan};
 use std::fmt::format;
 pub mod token_type;
-use crate::token_type::{Token, TokenType};
+use crate::token_type::{SingleTokenError, Token, TokenType};
 
 /// The `Lexer` struct is responsible for tokenizing the input string.
 /// It holds the entire input string, the remaining unprocessed part of the string,
@@ -89,8 +89,8 @@ impl<'de> Iterator for Lexer<'de> {
                 ';' => return just(TokenType::SEMICOLON),
                 '*' => return just(TokenType::STAR),
                 '-' => return just(TokenType::MINUS),
+                c if c.is_whitespace() => continue,
                 '/' => return just(TokenType::SLASH),
-                ' ' => continue,
                 '"' => Started::String,
                 '0'..='9' => Started::Number,
                 'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
@@ -101,12 +101,12 @@ impl<'de> Iterator for Lexer<'de> {
                 '!' => Started::IfEqualElse(TokenType::BANG_EQUAL, TokenType::BANG),
 
                 _ => {
-                    return Some(Err(miette::miette! {
-                        labels = vec![
-                            LabeledSpan::at(self.byte - c.len_utf8()..self.byte, "this character"),
-                        ],
-                        "Unexpected token `{}` in input", c
-                    }))
+                    return Some(Err(SingleTokenError {
+                        err_span: SourceSpan::from(self.byte - c.len_utf8()..self.byte),
+                        src: self.whole.to_string(),
+                        token: c,
+                    }
+                    .into()));
                 }
             };
 

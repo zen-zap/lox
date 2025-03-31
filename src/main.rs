@@ -1,3 +1,4 @@
+use crate::token_type::SingleTokenError;
 use clap::{Parser, Subcommand}; // command line argument parser
 use codecrafters_interpreter::*;
 use miette::{IntoDiagnostic, WrapErr};
@@ -22,6 +23,8 @@ enum Commands {
 fn main() -> miette::Result<()> {
     let args = Args::parse();
 
+    let mut erry = false;
+
     match args.command {
         Commands::Tokenize { filename } => {
             // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -36,7 +39,26 @@ fn main() -> miette::Result<()> {
             let lexer = Lexer::new(&file_contents);
 
             for token in lexer {
-                let token = token?;
+                let token = match token {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("{e:?}");
+
+                        if let Some(unk) = e.downcast_ref::<SingleTokenError>() {
+                            erry = true;
+
+                            eprintln!(
+                                "[line {}] Error: Unexpected character: {}",
+                                unk.line(),
+                                unk.token
+                            );
+
+                            continue;
+                        }
+
+                        return Err(e);
+                    }
+                };
 
                 println!("{token}");
             }
@@ -45,5 +67,8 @@ fn main() -> miette::Result<()> {
         }
     }
 
+    if erry {
+        std::process::exit(65);
+    }
     Ok(())
 }

@@ -1,5 +1,27 @@
+use miette::{self, Diagnostic, Error, SourceSpan};
 use std::borrow::Cow;
 use std::fmt::{self};
+use thiserror::Error;
+
+#[derive(Diagnostic, Debug, Error)]
+#[error("Unexpected character: {token}")]
+pub struct SingleTokenError {
+    #[source_code]
+    pub src: String,
+
+    pub token: char,
+
+    #[label = "this input character"]
+    pub err_span: SourceSpan,
+}
+
+impl SingleTokenError {
+    pub fn line(&self) -> usize {
+        let until_unk = &self.src[..=self.err_span.offset()];
+
+        until_unk.lines().count()
+    }
+}
 
 pub struct Token<'de> {
     /// holds the characters as &str
