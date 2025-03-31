@@ -1,6 +1,7 @@
-#[allow(unused_imports)]
-use miette::{self, Error, LabeledSpan, WrapErr, miette};
-
+#![allow(unused_imports)]
+#![allow(dead_code)]
+use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report};
+use std::fmt::format;
 pub mod token_type;
 use crate::token_type::{Token, TokenType};
 
@@ -76,37 +77,42 @@ impl<'de> Iterator for Lexer<'de> {
                 }))
             };
 
-            let started =
-                match c {
-                    '(' => return just(TokenType::LEFT_PAREN),
-                    ')' => return just(TokenType::RIGHT_PAREN),
-                    '{' => return just(TokenType::LEFT_BRACE),
-                    '}' => return just(TokenType::RIGHT_BRACE),
-                    ',' => return just(TokenType::COMMA),
-                    '.' => return just(TokenType::DOT),
-                    '+' => return just(TokenType::PLUS),
-                    ';' => return just(TokenType::SEMICOLON),
-                    '*' => return just(TokenType::STAR),
-                    '-' => return just(TokenType::MINUS),
-                    '/' => return just(TokenType::SLASH),
+            if self.rest.is_empty() {
+                return just(TokenType::EOF);
+            }
 
-                    '"' => Started::String,
-                    '0'..='9' => Started::Number,
-                    'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
+            let started = match c {
+                '\0' => return just(TokenType::EOF),
+                '(' => return just(TokenType::LEFT_PAREN),
+                ')' => return just(TokenType::RIGHT_PAREN),
+                '{' => return just(TokenType::LEFT_BRACE),
+                '}' => return just(TokenType::RIGHT_BRACE),
+                ',' => return just(TokenType::COMMA),
+                '.' => return just(TokenType::DOT),
+                '+' => return just(TokenType::PLUS),
+                ';' => return just(TokenType::SEMICOLON),
+                '*' => return just(TokenType::STAR),
+                '-' => return just(TokenType::MINUS),
+                '/' => return just(TokenType::SLASH),
+                ' ' => continue,
+                '"' => Started::String,
+                '0'..='9' => Started::Number,
+                'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
 
-                    '=' => Started::IfEqualElse(TokenType::EQUAL_EQUAL, TokenType::EQUAL),
-                    '<' => Started::IfEqualElse(TokenType::LESS_EQUAL, TokenType::LESS),
-                    '>' => Started::IfEqualElse(TokenType::GREATER_EQUAL, TokenType::GREATER),
-                    '!' => Started::IfEqualElse(TokenType::BANG_EQUAL, TokenType::BANG),
+                '=' => Started::IfEqualElse(TokenType::EQUAL_EQUAL, TokenType::EQUAL),
+                '<' => Started::IfEqualElse(TokenType::LESS_EQUAL, TokenType::LESS),
+                '>' => Started::IfEqualElse(TokenType::GREATER_EQUAL, TokenType::GREATER),
+                '!' => Started::IfEqualElse(TokenType::BANG_EQUAL, TokenType::BANG),
 
-                    _ => return Some(Err(miette::miette! {
+                _ => {
+                    return Some(Err(miette::miette! {
                         labels = vec![
                             LabeledSpan::at(self.byte - c.len_utf8()..self.byte, "this character"),
                         ],
-                        "Unexpected token `{c}` in Input",
-                    }
-                    .with_source_code(self.whole.to_string()))),
-                };
+                        "Unexpected token `{}` in input", c
+                    }))
+                }
+            };
 
             // if started is an Option immediately return, if it's an enum then check for the variants
             // even if you don't handle the Option case .. it does so implicitly if the things are not in the match arms
@@ -137,24 +143,52 @@ impl<'de> Iterator for Lexer<'de> {
                 Started::String => todo!(),
                 Started::Ident => todo!(),
                 Started::Number => {
+                    // eprintln!("c_onwards: {c_onwards}");
 
-                    let first_non_digit = c_onwards.find(|c| !matches!(c, '.' | '_' | '0'..='9')).unwrap_or_else(c_onwards.len())
-                    
-                    let literal = &c_onwards[..first_non_digit];
+                    let first_non_digit = c_onwards
+                        .find(|c| !matches!(c, '.' | '0'..='9'))
+                        .unwrap_or(c_onwards.len());
 
-                    let n = match literal.parse()
+                    let mut literal = &c_onwards[..first_non_digit];
+                    // literal is something like 123.456.789 here
+
+                    // eprintln!("literal: {literal}");
+
+                    let mut dotted = literal.splitn(3, '.');
+                    // after 3 the thing repeats
+
+                    if let (Some(one), Some(two), Some(_three)) =
+                        (dotted.next(), dotted.next(), dotted.next())
                     {
+                        literal = &literal[..one.len() + 1 + two.len()];
+                        // it becomes 123.456 here as the literal
+                        // get the number literal followed by a DOT and smthng
+                    }
+
+                    let extra_bytes = literal.len() - c.len_utf8();
+                    // literal operated on c_onwards ... so to get the number of things parsed ..
+                    // we subtract the initial stage
+
+                    self.byte += extra_bytes;
+                    self.rest = &self.rest[extra_bytes..];
+
+                    let n = match literal.parse() {
                         Ok(n) => n,
                         Err(e) => {
-                            return Some(Err(miette::miette!{}));
+                            return Some(Err(miette::miette! {
+                                labels = vec![
+                                    LabeledSpan::at(self.byte - literal.len()..self.byte, "this numeric literal"),
+                                ],
+                                "{e}",
+                            }.with_source_code(self.whole.to_string())));
                         }
                     };
 
-                    return Some( Ok( Token {
-                                    kind: TokenType::NUMBER(n),
-                                    origin: literal,
+                    return Some(Ok(Token {
+                        kind: TokenType::NUMBER(n),
+                        origin: literal,
                     }));
-                },
+                }
             };
         }
     }

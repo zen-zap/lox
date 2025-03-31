@@ -20,7 +20,6 @@ enum Commands {
 }
 
 fn main() -> miette::Result<()> {
-    
     let args = Args::parse();
 
     match args.command {
@@ -31,6 +30,8 @@ fn main() -> miette::Result<()> {
             let file_contents = fs::read_to_string(&filename)
                 .into_diagnostic()
                 .wrap_err_with(|| format!("reading {} file failed!", filename.display()))?;
+
+            // file_contents.push('\0'); // they don't have it in general files
 
             let lexer = Lexer::new(&file_contents);
 

@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::{self};
 
-
-pub struct Token<'de>
-{
+pub struct Token<'de> {
     /// holds the characters as &str
     pub origin: &'de str,
     /// holds the type
@@ -74,9 +72,7 @@ impl TokenType {
 }
 
 impl fmt::Display for Token<'_> {
-
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         let origin = self.origin;
         match self.kind {
             // Single-character tokens.
@@ -126,7 +122,7 @@ impl fmt::Display for Token<'_> {
             TokenType::WHILE => write!(f, "WHILE {origin} null"),
 
             // End-of-file token.
-            TokenType::EOF => write!(f, "EOF null null"),
+            TokenType::EOF => write!(f, "EOF null"),
         }
     }
 }
