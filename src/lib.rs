@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(unused_parens)]
 #![allow(dead_code)]
 use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report};
 use std::fmt::format;
@@ -141,7 +142,44 @@ impl<'de> Iterator for Lexer<'de> {
                     }
                 }
                 Started::String => todo!(),
-                Started::Ident => todo!(),
+                Started::Ident => {
+                    let first_non_ident = c_onwards
+                        .find(|c| !matches!(c, 'a'..='z' | 'A'..='Z' | '_' | '0'..='9'))
+                        .unwrap_or(c_onwards.len());
+
+                    let literal = &c_onwards[..first_non_ident];
+
+                    let extra_bytes = literal.len() - c.len_utf8();
+
+                    self.byte += extra_bytes;
+
+                    self.rest = &self.rest[extra_bytes..];
+
+                    let kind = match literal {
+                        "and" => TokenType::AND,
+                        "class" => TokenType::CLASS,
+                        "else" => TokenType::ELSE,
+                        "false" => TokenType::FALSE,
+                        "fun" => TokenType::FUN,
+                        "for" => TokenType::FOR,
+                        "if" => TokenType::IF,
+                        "nil" => TokenType::NIL,
+                        "or" => TokenType::OR,
+                        "print" => TokenType::PRINT,
+                        "return" => TokenType::RETURN,
+                        "super" => TokenType::SUPER,
+                        "this" => TokenType::THIS,
+                        "true" => TokenType::TRUE,
+                        "var" => TokenType::VAR,
+                        "while" => TokenType::WHILE,
+                        _ => TokenType::IDENT,
+                    };
+
+                    return Some(Ok(Token {
+                        kind: kind,
+                        origin: literal,
+                    }));
+                }
                 Started::Number => {
                     // eprintln!("c_onwards: {c_onwards}");
 
@@ -157,12 +195,22 @@ impl<'de> Iterator for Lexer<'de> {
                     let mut dotted = literal.splitn(3, '.');
                     // after 3 the thing repeats
 
-                    if let (Some(one), Some(two), Some(_three)) =
-                        (dotted.next(), dotted.next(), dotted.next())
-                    {
-                        literal = &literal[..one.len() + 1 + two.len()];
-                        // it becomes 123.456 here as the literal
-                        // get the number literal followed by a DOT and smthng
+                    match (dotted.next(), dotted.next(), dotted.next()) {
+                        (Some(one), Some(two), Some(_three)) => {
+                            literal = &literal[..one.len() + 1 + two.len()];
+                            // it becomes 123.456 here as the literal
+                            // get the number literal followed by a DOT and smthng
+                        }
+
+                        (Some(one), Some(two), None) if two.is_empty() => {
+                            if (two.is_empty()) {
+                                literal = &literal[..one.len()];
+                            }
+                        }
+
+                        _ => {
+                            // leave it as is
+                        }
                     }
 
                     let extra_bytes = literal.len() - c.len_utf8();
