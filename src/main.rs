@@ -40,6 +40,8 @@ fn main() -> miette::Result<()> {
 
                 println!("{token}");
             }
+
+            println!("EOF  null");
         }
     }
 

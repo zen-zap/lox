@@ -78,10 +78,6 @@ impl<'de> Iterator for Lexer<'de> {
                 }))
             };
 
-            if self.rest.is_empty() {
-                return just(TokenType::EOF);
-            }
-
             let started = match c {
                 '(' => return just(TokenType::LEFT_PAREN),
                 ')' => return just(TokenType::RIGHT_PAREN),
