@@ -83,7 +83,6 @@ impl<'de> Iterator for Lexer<'de> {
             }
 
             let started = match c {
-                '\0' => return just(TokenType::EOF),
                 '(' => return just(TokenType::LEFT_PAREN),
                 ')' => return just(TokenType::RIGHT_PAREN),
                 '{' => return just(TokenType::LEFT_BRACE),

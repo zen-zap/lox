@@ -122,7 +122,7 @@ impl fmt::Display for Token<'_> {
             TokenType::WHILE => write!(f, "WHILE {origin} null"),
 
             // End-of-file token.
-            TokenType::EOF => write!(f, "EOF null"),
+            TokenType::EOF => write!(f, "EOF  null"),
         }
     }
 }
