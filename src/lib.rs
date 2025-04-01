@@ -69,6 +69,8 @@ impl<'de> Iterator for Lexer<'de> {
                 Ident,
                 /// represents <=, <, >=, >, =, ==, !=
                 IfEqualElse(TokenType, TokenType),
+                /// to handle / and //
+                Slash,
             }
 
             let just = move |kind: TokenType| {
@@ -90,11 +92,10 @@ impl<'de> Iterator for Lexer<'de> {
                 '*' => return just(TokenType::STAR),
                 '-' => return just(TokenType::MINUS),
                 c if c.is_whitespace() => continue,
-                '/' => return just(TokenType::SLASH),
+                '/' => Started::Slash,
                 '"' => Started::String,
                 '0'..='9' => Started::Number,
                 'a'..='z' | 'A'..='Z' | '_' => Started::Ident,
-
                 '=' => Started::IfEqualElse(TokenType::EQUAL_EQUAL, TokenType::EQUAL),
                 '<' => Started::IfEqualElse(TokenType::LESS_EQUAL, TokenType::LESS),
                 '>' => Started::IfEqualElse(TokenType::GREATER_EQUAL, TokenType::GREATER),
@@ -231,6 +232,25 @@ impl<'de> Iterator for Lexer<'de> {
                         kind: TokenType::NUMBER(n),
                         origin: literal,
                     }));
+                }
+                Started::Slash => {
+                    if self.rest.starts_with('/') {
+                        // this is a comment!
+                        // keep reading until we hit the end of a line
+                        let line_end = self.rest.find('\n').unwrap_or_else(|| self.rest.len());
+
+                        self.byte += line_end;
+
+                        self.rest = &self.rest[line_end..]; // we can let the new line go through since we can skip the whitespace anyways
+
+                        continue;
+                    }
+                    else {
+                        Some(Ok(Token {
+                            kind: TokenType::SLASH,
+                            origin: c_str,
+                        }))
+                    }
                 }
             };
         }

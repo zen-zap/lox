@@ -1,3 +1,4 @@
+#![allow(unreachable_code)]
 use crate::token_type::SingleTokenError;
 use clap::{Parser, Subcommand}; // command line argument parser
 use codecrafters_interpreter::*;
@@ -69,6 +70,8 @@ fn main() -> miette::Result<()> {
 
     if erry {
         std::process::exit(65);
+    } else {
+        std::process::exit(0);
     }
     Ok(())
 }
