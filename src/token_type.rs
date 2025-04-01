@@ -4,7 +4,7 @@ use std::fmt::{self};
 use thiserror::Error;
 
 #[derive(Diagnostic, Debug, Error)]
-#[error("Unexpected character: {token}")]
+#[error("Unexpected token: {token}")]
 pub struct SingleTokenError {
     #[source_code]
     pub src: String,
@@ -22,6 +22,25 @@ impl SingleTokenError {
         until_unk.lines().count()
     }
 }
+
+#[derive(Diagnostic, Debug, Error)]
+#[error("Unterminated String")]
+pub struct StringTerminationError {
+    #[source_code]
+    pub src: String,
+
+    #[label = "this string literal"]
+    pub err_span: SourceSpan, // span here is gonna be the entire literal .. so there's no token
+}
+
+impl StringTerminationError {
+    pub fn line(&self) -> usize {
+        let until_unk = &self.src[..=self.err_span.offset()];
+
+        until_unk.lines().count()
+    }
+}
+
 
 pub struct Token<'de> {
     /// holds the characters as &str
@@ -88,8 +107,10 @@ impl TokenType {
     /// This function is a placeholder for unescaping string literals.
     /// It takes a string slice and returns a `Cow` (Clone on Write) of the unescaped string.
     /// The `Cow` type allows for efficient handling of borrowed and owned data.
-    pub fn unescape<'de>(_s: &'de str) -> Cow<'de, str> {
-        todo!()
+    pub fn unescape<'de>(s: &'de str) -> Cow<'de, str> {
+        // lox has no escaping, just gotta remove the "
+        // since this has no escaping, the strings can't contain '"', so trim won't print multiple
+        return Cow::Borrowed(s.trim_matches('"'));
     }
 }
 

@@ -4,7 +4,7 @@
 use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report, SourceSpan};
 use std::fmt::format;
 pub mod token_type;
-use crate::token_type::{SingleTokenError, Token, TokenType};
+use crate::token_type::{SingleTokenError, Token, TokenType, StringTerminationError};
 
 /// The `Lexer` struct is responsible for tokenizing the input string.
 /// It holds the entire input string, the remaining unprocessed part of the string,
@@ -137,7 +137,34 @@ impl<'de> Iterator for Lexer<'de> {
                         }))
                     }
                 }
-                Started::String => todo!(),
+                Started::String => {
+                    if let Some(end) = self.rest.find('"')
+                    {
+                        let literal = &c_onwards[..end + 1 + 1]; // now we include the " " at the start and the end
+
+                        self.byte += end + 1;
+
+                        self.rest = &self.rest[end+1..];
+
+                        Some(Ok(Token {
+                            kind: TokenType::STRING,
+                            origin: literal, 
+                        }))
+                    }
+                    else
+                    {
+                        let e = StringTerminationError {
+                            err_span: SourceSpan::from(self.byte - c.len_utf8()..self.whole.len()),
+                            src: self.whole.to_string(),                            
+                        };
+
+                        self.byte += self.rest.len();
+
+                        self.rest = &self.rest[self.rest.len()..];
+
+                        return Some(Err(e.into()));
+                    }
+                },
                 Started::Ident => {
                     let first_non_ident = c_onwards
                         .find(|c| !matches!(c, 'a'..='z' | 'A'..='Z' | '_' | '0'..='9'))
