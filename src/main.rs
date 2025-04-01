@@ -59,7 +59,7 @@ fn main() -> miette::Result<()> {
                             erry = true;
 
                             eprintln!(
-                                "[line {}] Error: Unexpected string. ",
+                                "[line {}] Error: Unexpected string.",
                                 ust.line()
                             );
                         }
