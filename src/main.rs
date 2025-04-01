@@ -1,5 +1,5 @@
 #![allow(unreachable_code)]
-use crate::token_type::SingleTokenError;
+use crate::token_type::{SingleTokenError, StringTerminationError};
 use clap::{Parser, Subcommand}; // command line argument parser
 use codecrafters_interpreter::*;
 use miette::{IntoDiagnostic, WrapErr};
@@ -52,12 +52,20 @@ fn main() -> miette::Result<()> {
                                 "[line {}] Error: Unexpected character: {}",
                                 unk.line(),
                                 unk.token
-                            );
-
-                            continue;
+                            );                            
                         }
 
-                        return Err(e);
+                        else if let Some(ust) = e.downcast_ref::<StringTerminationError>() {
+                            erry = true;
+
+                            eprintln!(
+                                "[line {}] Error: Unexpected string. ",
+                                ust.line()
+                            );
+                        }
+
+                        continue;
+
                     }
                 };
 
@@ -73,5 +81,7 @@ fn main() -> miette::Result<()> {
     } else {
         std::process::exit(0);
     }
+
+    // dead_code
     Ok(())
 }
