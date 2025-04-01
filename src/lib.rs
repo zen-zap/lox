@@ -5,7 +5,6 @@ use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report, Sourc
 use std::fmt::format;
 pub mod token_type;
 use crate::token_type::{SingleTokenError, Token, TokenType, StringTerminationError};
-use crate::token_type::{SingleTokenError, Token, TokenType, StringTerminationError};
 
 /// The `Lexer` struct is responsible for tokenizing the input string.
 /// It holds the entire input string, the remaining unprocessed part of the string,
