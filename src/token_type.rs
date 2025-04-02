@@ -144,7 +144,16 @@ impl fmt::Display for Token<'_> {
             // Literals.
             TokenType::IDENT => write!(f, "IDENTIFIER {origin} null"),
             TokenType::STRING => write!(f, "STRING {origin} {}", TokenType::unescape(origin)),
-            TokenType::NUMBER(n) => write!(f, "NUMBER {origin} {n}"), // literal and float point number
+            TokenType::NUMBER(n) => {
+                if n.fract() == 0.0
+                {
+                    write!(f, "NUMBER {origin} {n}.0")
+                }
+                else
+                {
+                    write!(f, "NUMBER {origin} {n}")
+                }
+            }// literal and float point number
 
             // Keywords.
             TokenType::AND => write!(f, "AND {origin} null"),
