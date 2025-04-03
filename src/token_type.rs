@@ -1,4 +1,9 @@
-use miette::{self, Diagnostic, Error, SourceSpan};
+/// this one defines the token for the lexer
+/// the token for the parser is an entire different thing
+///
+/// Refer [this](https://craftinginterpreters.com/representing-code.html#context-free-grammars]
+
+use miette::{self, Diagnostic,SourceSpan};
 use std::borrow::Cow;
 use std::fmt::{self};
 use thiserror::Error;
@@ -41,12 +46,14 @@ impl StringTerminationError {
     }
 }
 
-
+#[derive(Debug)]
 pub struct Token<'de> {
     /// holds the characters as &str
     pub origin: &'de str,
     /// holds the type
     pub kind: TokenType,
+    /// byte offset that the operator was placed at -- used for debugging at the parsing stage
+    pub offset: usize
 }
 
 /// The `TokenType` enum represents the different types of tokens that can be recognized by the lexer.
@@ -101,9 +108,12 @@ pub enum TokenType {
     WHILE,
 
     EOF,
+
+    // while parsing
+    Op,
 }
 
-impl TokenType {
+impl Token<'_> {
     /// This function is a placeholder for unescaping string literals.
     /// It takes a string slice and returns a `Cow` (Clone on Write) of the unescaped string.
     /// The `Cow` type allows for efficient handling of borrowed and owned data.
@@ -143,7 +153,7 @@ impl fmt::Display for Token<'_> {
 
             // Literals.
             TokenType::IDENT => write!(f, "IDENTIFIER {origin} null"),
-            TokenType::STRING => write!(f, "STRING {origin} {}", TokenType::unescape(origin)),
+            TokenType::STRING => write!(f, "STRING {origin} {}", Token::unescape(origin)),
             TokenType::NUMBER(n) => {
                 if n.fract() == 0.0
                 {
@@ -175,6 +185,8 @@ impl fmt::Display for Token<'_> {
 
             // End-of-file token.
             TokenType::EOF => write!(f, "EOF  null"),
+
+            _ => unimplemented!(),
         }
     }
 }
