@@ -47,19 +47,19 @@ impl<'de> Lexer<'de> {
     {
         match self.next()
         {
-            Some(Ok(token)) if check(&token) == next => Ok(token),
+            Some(Ok(token)) if check(&token) => Ok(token),
             Some(Ok(token)) => {
                 return Err(miette::miette!{
                     labels = vec![
-                        LabeledSpan::at(token.offset..token.offset+self.origin.len(), "here")
+                        LabeledSpan::at(token.offset..token.offset + token.origin.len(), "here")
                     ],
 
-                    help = "Expected {next:?}",
+                    help = format!("Expected {token:?}"),
                     "{unexpected}",
                 }.with_source_code(self.whole.to_string()));
             }
             Some(Err(e)) => Err(e),
-            None => Err(Eof),
+            None => Err(Eof).into(),
         }
     }
 
@@ -94,6 +94,9 @@ impl<'de> Iterator for Lexer<'de> {
     /// Pattern helpful for streaming characters ..
     /// actual lexing happens here
     fn next(&mut self) -> Option<Self::Item> {
+
+        self.peeked = None;
+
         loop {
             // must be inside the loop .. since we use chars with byte_index and self.rest updates based on this
             let mut chars = self.rest.chars();
