@@ -109,9 +109,9 @@ impl fmt::Display for Op {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 /// holds the variants for the expression?
-enum TokenTree<'de> {
+pub enum TokenTree<'de> {
     /// represents a single character
     Atom(Atom<'de>),
     /// represents the `head` -> `rest`
@@ -180,9 +180,9 @@ impl fmt::Display for TokenTree<'_> {
 pub struct Parser<'de>
 {
     /// contains the input string
-    whole: &'de str,
+    pub whole: &'de str,
     /// holds the lexer::Lexer
-    lexer: Lexer<'de>, 
+    pub lexer: Lexer<'de>,
 }
 
 impl<'de> Parser<'de>
@@ -229,8 +229,11 @@ impl<'de> Parser<'de>
 
                 arguments.push(argument);
 
-                let token = self.lexer.next().expect_where(|token| matches!(token.kind, TokenType::RIGHT_PAREN | TokenType::COMMA),
-                                                           "continuing argument list");
+                let token = self.lexer.expect_where(
+                    |token| 
+                    matches!(token.kind, TokenType::RIGHT_PAREN | TokenType::COMMA), 
+                    "continuing argument list",
+                ).wrap_err("in argument list of function call")?;
 
                 if token.kind == TokenType::RIGHT_PAREN
                 {
@@ -606,7 +609,7 @@ impl<'de> Parser<'de>
                 let name = token.origin;
                 let ident = Atom::Ident(token.origin);
 
-                let mut parameters = Vec::new();
+                let parameters = Vec::new();
 
                 self.lexer.expect(TokenType::LEFT_PAREN, "missing (").wrap_err_with(|| format!("in parameter list of function {name}"))?;
 

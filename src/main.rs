@@ -1,10 +1,12 @@
 #![allow(unreachable_code)]
-use crate::token_type::{SingleTokenError, StringTerminationError};
 use clap::{Parser, Subcommand}; // command line argument parser
 use codecrafters_interpreter as inp;
 use miette::{IntoDiagnostic, WrapErr};
 use std::fs;
 use std::path::PathBuf;
+use inp::token_type::{SingleTokenError, StringTerminationError, self};
+use inp::lexer::Lexer;
+
 
 /// type to help us parse the command line arguments
 #[derive(Parser, Debug)]
@@ -107,7 +109,7 @@ fn main() -> miette::Result<()> {
                 .into_diagnostic()
                 .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
 
-            let parser = imp::Parser::new(&file_contents);
+            let parser = inp::Parser::new(&file_contents);
             println!("{}", parser.parse().unwrap());
         }
     }
