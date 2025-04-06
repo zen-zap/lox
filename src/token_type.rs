@@ -46,7 +46,7 @@ impl StringTerminationError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token<'de> {
     /// holds the characters as &str
     pub origin: &'de str,

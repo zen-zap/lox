@@ -4,13 +4,15 @@
 use miette::{Context, Diagnostic, Error, LabeledSpan, NamedSource, Report, SourceSpan};
 use std::fmt::format;
 use crate::token_type::{SingleTokenError, Token, TokenType, StringTerminationError};
+use thiserror::Error;
 
 /// The `Lexer` struct is responsible for tokenizing the input string.
 /// It holds the entire input string, the remaining unprocessed part of the string,
 /// and the current byte index for tracking the position in the string.
 /// The `Lexer` struct implements the `Iterator` trait, allowing it to produce tokens one at a time.
 /// The `next` method is where the actual lexing happens.
-/// It processes the input string character by character, identifying tokens based on the characters encountered.
+/// It processes the input string character by character, identifying tokens based on the characters encountered
+#[derive(Debug)]
 pub struct Lexer<'de> {
     /// holds the entire String
     whole: &'de str,
@@ -43,23 +45,23 @@ impl<'de> Lexer<'de> {
     /// helper function for unexpected token errors
     ///
     /// returns a Token<'de>
-    pub fn expect_where(&mut self, check: impl FnMut(&Token<'de>) -> bool, unexpected: &str) -> Result<Token<'de>, miette::Error>
+    pub fn expect_where(&mut self, mut check: impl FnMut(&Token<'de>) -> bool, unexpected: &str) -> Result<Token<'de>, miette::Error>
     {
         match self.next()
         {
             Some(Ok(token)) if check(&token) => Ok(token),
             Some(Ok(token)) => {
-                return Err(miette::miette!{
+                Err(miette::miette!{
                     labels = vec![
                         LabeledSpan::at(token.offset..token.offset + token.origin.len(), "here")
                     ],
 
                     help = format!("Expected {token:?}"),
                     "{unexpected}",
-                }.with_source_code(self.whole.to_string()));
+                }.with_source_code(self.whole.to_string()))
             }
             Some(Err(e)) => Err(e),
-            None => Err(Eof).into(),
+            None => Err(Eof.into()),
         }
     }
 
@@ -95,7 +97,9 @@ impl<'de> Iterator for Lexer<'de> {
     /// actual lexing happens here
     fn next(&mut self) -> Option<Self::Item> {
 
-        self.peeked = None;
+        if let Some(next) = self.peeked.take() {
+            return Some(next);
+        }
 
         loop {
             // must be inside the loop .. since we use chars with byte_index and self.rest updates based on this
@@ -177,7 +181,7 @@ impl<'de> Iterator for Lexer<'de> {
                     self.byte += trimmed;
 
                     if self.rest.trim_start().starts_with("=") {
-                        // get a span of the rest of the chracters
+                        // get a span of the rest of the characters
                         let span = &c_onwards[..trimmed + c.len_utf8() + 1];
                         self.rest = &self.rest[1..]; // already trimmed above
                         self.byte += 1;
@@ -329,7 +333,7 @@ impl<'de> Iterator for Lexer<'de> {
 
                         self.byte += line_end;
 
-                        self.rest = &self.rest[line_end..]; // we can let the new line go through since we can skip the whitespace anyways
+                        self.rest = &self.rest[line_end..]; // we can let the new line go through since we can skip the whitespace anyway
 
                         continue;
                     }

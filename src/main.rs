@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 use crate::token_type::{SingleTokenError, StringTerminationError};
 use clap::{Parser, Subcommand}; // command line argument parser
-use codecrafters_interpreter::*;
+use codecrafters_interpreter as inp;
 use miette::{IntoDiagnostic, WrapErr};
 use std::fs;
 use std::path::PathBuf;
@@ -19,14 +19,18 @@ struct Args {
 enum Commands {
     /// takes a file path for tokenization
     Tokenize { filename: PathBuf },
+    Parse { filename: PathBuf },
+    Run { filename: PathBuf },
 }
 
 fn main() -> miette::Result<()> {
+
     let args = Args::parse();
 
     let mut erry = false;
 
     match args.command {
+
         Commands::Tokenize { filename } => {
             // You can use print statements as follows for debugging, they'll be visible when running tests.
             eprintln!("Logs from your program will appear here!");
@@ -73,6 +77,38 @@ fn main() -> miette::Result<()> {
             }
 
             println!("EOF  null");
+
+            if erry {
+                std::process::exit(65);
+            }
+        }
+
+
+        Commands::Parse { filename } => {
+
+            let file_contents = fs::read_to_string(&filename)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
+
+            let parser = inp::Parser::new(&file_contents);
+
+            match parser.parse_expression() {
+                Ok(tt) => println!("{tt}"),
+                Err(e) => {
+                    // TODO: match error line format
+                    eprintln!("{e:?}");
+                    std::process::exit(65);
+                }
+            }        
+        }
+
+        Commands::Run { filename } => {
+            let file_contents = fs::read_to_string(&filename)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
+
+            let parser = imp::Parser::new(&file_contents);
+            println!("{}", parser.parse().unwrap());
         }
     }
 
