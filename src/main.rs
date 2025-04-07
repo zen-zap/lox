@@ -4,7 +4,7 @@ use codecrafters_interpreter as inp;
 use miette::{IntoDiagnostic, WrapErr};
 use std::fs;
 use std::path::PathBuf;
-use inp::token_type::{SingleTokenError, StringTerminationError, self};
+use inp::token_type::{SingleTokenError, StringTerminationError};
 use inp::lexer::Lexer;
 
 

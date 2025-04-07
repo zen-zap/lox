@@ -107,6 +107,7 @@ pub enum TokenType {
     VAR,
     WHILE,
 
+    // for denoting End of File
     EOF,
 
     // while parsing
@@ -117,10 +118,10 @@ impl Token<'_> {
     /// This function is a placeholder for unescaping string literals.
     /// It takes a string slice and returns a `Cow` (Clone on Write) of the unescaped string.
     /// The `Cow` type allows for efficient handling of borrowed and owned data.
-    pub fn unescape<'de>(s: &'de str) -> Cow<'de, str> {
+    pub fn unescape(s: &str) -> Cow<'_, str> {
         // lox has no escaping, just gotta remove the "
         // since this has no escaping, the strings can't contain '"', so trim won't print multiple
-        return Cow::Borrowed(s.trim_matches('"'));
+        Cow::Borrowed(s.trim_matches('"'))
     }
 }
 

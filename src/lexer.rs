@@ -329,7 +329,7 @@ impl<'de> Iterator for Lexer<'de> {
                     if self.rest.starts_with('/') {
                         // this is a comment!
                         // keep reading until we hit the end of a line
-                        let line_end = self.rest.find('\n').unwrap_or_else(|| self.rest.len());
+                        let line_end = self.rest.find('\n').unwrap_or(self.rest.len());
 
                         self.byte += line_end;
 

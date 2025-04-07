@@ -1,179 +1,12 @@
 // src/parser.rs
-//
-// We're gonna implement the Pratt Parser here .. 
-#![allow(unused_parens)]
-#![allow(dead_code)]
+
 use miette::{Error, LabeledSpan, WrapErr};
-use std::{fmt, borrow::Cow};
 use crate::token_type::{Token, TokenType};
-use crate::lexer::{Lexer};
+use crate::lexer::Lexer;
+use crate::asth::{Op, Atom, TokenTree};
+use crate::binds::{infix_binding_power,prefix_binding_power, postfix_binding_power};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Atom<'de>
-{
-    String(Cow<'de, str>),
-    Number(f64),
-    Nil,
-    Bool(bool),
-    Ident(&'de str),
-    Super,
-    This,
-}
-
-impl fmt::Display for Atom<'_> {
-
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
-        match self {
-            // Atom::String(s) => write!(f, "\"{s}\""),
-            Atom::String(s) => write!(f, "{s}"),
-            Atom::Number(n) => {
-                if *n == n.trunc() {
-                    write!(f, "{n}.0")
-                } else {
-                    write!(f, "{n}")
-                }
-            }
-            Atom::Nil => write!(f, "nil"),
-            Atom::Bool(b) => write!(f, "{b:?}"),
-            Atom::Ident(i) => write!(f, "{i}"),
-            Atom::Super => write!(f, "super"),
-            Atom::This => write!(f, "this"),
-        }    }
-}
-
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Op
-{
-    MINUS,
-    PLUS,
-    SLASH,
-    STAR,    
-    BANG,
-    BANG_EQUAL,
-    EQUAL,
-    EQUAL_EQUAL,
-    GREATER,
-    GREATER_EQUAL,
-    LESS,
-    LESS_EQUAL,
-    AND,
-    OR,
-    IF,
-    FOR,
-    FUN,
-    PRINT,
-    RETURN,
-    VAR,
-    WHILE,
-    FIELD,
-    CLASS,
-    CALL,
-    GROUP,
-}
-
-impl fmt::Display for Op {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Op::MINUS => "-",
-                Op::PLUS => "+",
-                Op::STAR => "*",
-                Op::BANG_EQUAL => "!=",
-                Op::EQUAL_EQUAL => "==",
-                Op::LESS_EQUAL => "<=",
-                Op::GREATER_EQUAL => ">=",
-                Op::LESS => "<",
-                Op::GREATER => ">",
-                Op::SLASH => "/",
-                Op::BANG => "!",
-                Op::AND => "and",
-                Op::OR => "or",
-                Op::FOR => "for",
-                Op::CLASS => "class",
-                Op::PRINT => "print",
-                Op::RETURN => "return",
-                Op::FIELD => ".",
-                Op::VAR => "var",
-                Op::WHILE => "while",
-                Op::CALL => "call",
-                Op::GROUP => "group",
-                _ => {
-                    todo!()
-                },
-            }
-        )
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-/// holds the variants for the expression?
-pub enum TokenTree<'de> {
-    /// represents a single character
-    Atom(Atom<'de>),
-    /// represents the `head` -> `rest`
-    Cons(Op, Vec<TokenTree<'de>>),
-    /// for representing the function blocks
-    Fun{
-        name: Atom<'de>, 
-        parameters: Vec<Token<'de>>, 
-        body: Box<TokenTree<'de>>,
-    },
-    /// for representing IF statements
-    If{
-        cond: Box<TokenTree<'de>>, 
-        yes: Box<TokenTree<'de>>, 
-        no: Option<Box<TokenTree<'de>>>
-    },
-    /// for representing Function calls
-    Call{
-        callee: Box<TokenTree<'de>>, 
-        arguments: Vec<TokenTree<'de>>,
-    },
-}
-
-impl fmt::Display for TokenTree<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TokenTree::Atom(i) => write!(f, "{}", i),
-            TokenTree::Cons(head, rest) => {
-                write!(f, "({}", head)?;
-                for s in rest {
-                    write!(f, " {s}")?
-                }
-                write!(f, ")")
-            }
-            TokenTree::Fun {
-                name,
-                parameters,
-                body,
-            } => {
-                write!(f, "(def {name}")?;
-                for p in parameters {
-                    write!(f, " {p}")?
-                }
-                write!(f, " {body})")
-            }
-            TokenTree::Call { callee, arguments } => {
-                write!(f, "({callee}")?;
-                for a in arguments {
-                    write!(f, " {a}")?
-                }
-                write!(f, ")")
-            }
-            TokenTree::If { cond, yes, no } => {
-                write!(f, "(if {cond} {yes}")?;
-                if let Some(no) = no {
-                    write!(f, " {no}")?
-                }
-                write!(f, ")")
-            }
-        }
-    }
-}/// defines the Parser Struct
+/// defines the Parser Struct
 ///
 /// whole: &'de str,
 /// lexer: lexer::Lexer<'de str>,
@@ -223,7 +56,7 @@ impl<'de> Parser<'de>
         } else {
             loop {
                 // parse the arguments
-                let mut argument = self
+                let argument = self
                     .parse_expression_within(0)
                     .wrap_err_with(|| format!("in argument #{} of function call", arguments.len() + 1))?;
 
@@ -278,7 +111,7 @@ impl<'de> Parser<'de>
 
             Token {
                 kind: TokenType::NUMBER(n),
-                origin,
+                origin: _,
                 ..
             } => TokenTree::Atom(Atom::Number(n)),
 
@@ -316,7 +149,7 @@ impl<'de> Parser<'de>
             // groups
             Token {
                 kind: TokenType::LEFT_PAREN,
-                origin,
+                origin: _,
                 ..
             } => {
                 let lhs = self.parse_expression_within(0).wrap_err("in bracketed expression")?;
@@ -355,7 +188,7 @@ impl<'de> Parser<'de>
         loop {
             let op = self.lexer.peek();
 
-            if op.map_or(false, |op| op.is_err()) {
+            if op.is_some_and(|op| op.is_err()) {
                 return Err(self.lexer.next().expect("Checked Some above").expect_err("Checked Err above")).wrap_err("in place of expected operator");
             }
 
@@ -497,12 +330,10 @@ impl<'de> Parser<'de>
                 //    TokenTree::Cons(op, vec![lhs, rhs])
                 //};
                 //
-                lhs = match op {
-                    _ => {
+                lhs = {
                         let rhs = self.parse_expression_within(r_bp).wrap_err_with(|| format!("on the right-hand side of {lhs} {op}"))?;
 
                         TokenTree::Cons(op, vec![lhs, rhs])
-                    }
                 };
 
                 continue;
@@ -534,13 +365,13 @@ impl<'de> Parser<'de>
 
             Token {
                 kind: TokenType::SUPER,
-                origin,
+                origin: _,
                 ..
             } => TokenTree::Atom(Atom::Super),
 
             Token {
                 kind: TokenType::THIS,
-                origin,
+                origin: _,
                 ..
             } => TokenTree::Atom(Atom::This),
 
@@ -604,12 +435,12 @@ impl<'de> Parser<'de>
                 }
 
             Token { kind: TokenType::FUN, .. } => {
-                let token = self.lexer.expect(TokenType::IDENT, "expected Identifier").wrap_err_with(|| format!("in function name declaration"))?;
+                let token = self.lexer.expect(TokenType::IDENT, "expected Identifier").wrap_err("in function name declaration")?;
 
                 let name = token.origin;
                 let ident = Atom::Ident(token.origin);
 
-                let parameters = Vec::new();
+                let mut parameters = Vec::new();
 
                 self.lexer.expect(TokenType::LEFT_PAREN, "missing (").wrap_err_with(|| format!("in parameter list of function {name}"))?;
 
@@ -620,7 +451,9 @@ impl<'de> Parser<'de>
                     // immediate parameter list end
                 } else {
                     loop {
-                        let parameter = self.lexer.expect(TokenType::IDENT, "unexpect token").wrap_err_with(|| format!("in parameter #{} of function {name}", parameters.len() + 1))?;
+                        let parameter = self.lexer.expect(TokenType::IDENT, "unexpected token").wrap_err_with(|| format!("in parameter #{} of function {name}", parameters.len() + 1))?;
+
+                        parameters.push(parameter);
 
                         let token = self.lexer.expect_where(|token| matches!(token.kind, TokenType::RIGHT_PAREN | TokenType::COMMA), "continuing paramter list")
                             .wrap_err_with(|| format!("in parameter list of function {name}"))?;
@@ -654,7 +487,7 @@ impl<'de> Parser<'de>
                 let cond = self.parse_expression_within(0).wrap_err("in loop condition of for \
                 loop")?;
 
-                self.lexer.expect(TokenType::SEMICOLON, "missing ;").wrap_err("in for loop condition");
+                let _ = self.lexer.expect(TokenType::SEMICOLON, "missing ;").wrap_err("in for loop condition");
 
                 let upd = self.parse_expression_within(0).wrap_err("in update of for loop")?;
 
@@ -724,7 +557,7 @@ impl<'de> Parser<'de>
         loop {
             let op = self.lexer.peek();
 
-            if op.map_or(false, |op| op.is_err()) {
+            if op.is_some_and(|op| op.is_err()) {
                 return Err(self.lexer.next().expect("checked Some above").expect_err("Checked Err above")).wrap_err("in place of expected operator");
             }
 
@@ -793,37 +626,35 @@ impl<'de> Parser<'de>
     }
 }
 
-fn prefix_binding_power(op: Op) -> ((), u8) { 
-    match op {
-        Op::BANG | Op::MINUS => ((), 11),
-        Op::RETURN | Op::PRINT => ((), 1),
-        _ => panic!("bad op: {:?}", op),
-    }
-}
-
-fn infix_binding_power(op: Op) -> Option<(u8, u8)> {
-    let res = match op {
-        // '=' => (2, 1),
-        // '?' => (4, 3),
-        Op::AND | Op::OR => (3, 4),
-        Op::BANG_EQUAL
-        | Op::EQUAL_EQUAL
-        | Op::LESS
-        | Op::LESS_EQUAL
-        | Op::GREATER
-        | Op::GREATER_EQUAL => (5, 6),
-        Op::PLUS | Op::MINUS => (7, 8),
-        Op::STAR | Op::SLASH => (9, 10),
-        Op::FIELD => (16, 15),
-        _ => return None,
-    };
-    Some(res)
-}
-
-fn postfix_binding_power(op: Op) -> Option<(u8, ())> {
-    let res = match op {
-        Op::CALL => (13, ()),
-        _ => return None,
-    };
-    Some(res)
-}
+//fn prefix_binding_power(op: Op) -> ((), u8) { 
+//    match op {
+//        Op::BANG | Op::MINUS => ((), 11),
+//        Op::RETURN | Op::PRINT => ((), 1),
+//        _ => panic!("bad op: {:?}", op),
+//    }
+//}
+//
+//fn infix_binding_power(op: Op) -> Option<(u8, u8)> {
+//    let res = match op {
+//        Op::AND | Op::OR => (3, 4),
+//        Op::BANG_EQUAL
+//        | Op::EQUAL_EQUAL
+//        | Op::LESS
+//        | Op::LESS_EQUAL
+//        | Op::GREATER
+//        | Op::GREATER_EQUAL => (5, 6),
+//        Op::PLUS | Op::MINUS => (7, 8),
+//        Op::STAR | Op::SLASH => (9, 10),
+//        Op::FIELD => (16, 15),
+//        _ => return None,
+//    };
+//    Some(res)
+//}
+//
+//fn postfix_binding_power(op: Op) -> Option<(u8, ())> {
+//    let res = match op {
+//        Op::CALL => (13, ()),
+//        _ => return None,
+//    };
+//    Some(res)
+//}
