@@ -2,8 +2,7 @@
 /// the token for the parser is an entire different thing
 ///
 /// Refer [this](https://craftinginterpreters.com/representing-code.html#context-free-grammars]
-
-use miette::{self, Diagnostic,SourceSpan};
+use miette::{self, Diagnostic, SourceSpan};
 use std::borrow::Cow;
 use std::fmt::{self};
 use thiserror::Error;
@@ -11,49 +10,49 @@ use thiserror::Error;
 #[derive(Diagnostic, Debug, Error)]
 #[error("Unexpected token: {token}")]
 pub struct SingleTokenError {
-    #[source_code]
-    pub src: String,
+	#[source_code]
+	pub src: String,
 
-    pub token: char,
+	pub token: char,
 
-    #[label = "this input character"]
-    pub err_span: SourceSpan,
+	#[label = "this input character"]
+	pub err_span: SourceSpan,
 }
 
 impl SingleTokenError {
-    pub fn line(&self) -> usize {
-        let until_unk = &self.src[..=self.err_span.offset()];
+	pub fn line(&self) -> usize {
+		let until_unk = &self.src[..=self.err_span.offset()];
 
-        until_unk.lines().count()
-    }
+		until_unk.lines().count()
+	}
 }
 
 #[derive(Diagnostic, Debug, Error)]
 #[error("Unterminated String")]
 pub struct StringTerminationError {
-    #[source_code]
-    pub src: String,
+	#[source_code]
+	pub src: String,
 
-    #[label = "this string literal"]
-    pub err_span: SourceSpan, // span here is gonna be the entire literal .. so there's no token
+	#[label = "this string literal"]
+	pub err_span: SourceSpan, // span here is gonna be the entire literal .. so there's no token
 }
 
 impl StringTerminationError {
-    pub fn line(&self) -> usize {
-        let until_unk = &self.src[..=self.err_span.offset()];
+	pub fn line(&self) -> usize {
+		let until_unk = &self.src[..=self.err_span.offset()];
 
-        until_unk.lines().count()
-    }
+		until_unk.lines().count()
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token<'de> {
-    /// holds the characters as &str
-    pub origin: &'de str,
-    /// holds the type
-    pub kind: TokenType,
-    /// byte offset that the operator was placed at -- used for debugging at the parsing stage
-    pub offset: usize
+	/// holds the characters as &str
+	pub origin: &'de str,
+	/// holds the type
+	pub kind: TokenType,
+	/// byte offset that the operator was placed at -- used for debugging at the parsing stage
+	pub offset: usize,
 }
 
 /// The `TokenType` enum represents the different types of tokens that can be recognized by the lexer.
@@ -61,133 +60,133 @@ pub struct Token<'de> {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
-    // Single-character tokens.
-    LEFT_PAREN,
-    RIGHT_PAREN,
-    LEFT_BRACE,
-    RIGHT_BRACE,
-    COMMA,
-    DOT,
-    MINUS,
-    PLUS,
-    SEMICOLON,
-    SLASH,
-    STAR,
+	// Single-character tokens.
+	LEFT_PAREN,
+	RIGHT_PAREN,
+	LEFT_BRACE,
+	RIGHT_BRACE,
+	COMMA,
+	DOT,
+	MINUS,
+	PLUS,
+	SEMICOLON,
+	SLASH,
+	STAR,
 
-    // One or two character tokens.
-    BANG,
-    BANG_EQUAL,
-    EQUAL,
-    EQUAL_EQUAL,
-    GREATER,
-    GREATER_EQUAL,
-    LESS,
-    LESS_EQUAL,
+	// One or two character tokens.
+	BANG,
+	BANG_EQUAL,
+	EQUAL,
+	EQUAL_EQUAL,
+	GREATER,
+	GREATER_EQUAL,
+	LESS,
+	LESS_EQUAL,
 
-    // Literals.
-    IDENT,
-    STRING,
-    NUMBER(f64),
+	// Literals.
+	IDENT,
+	STRING,
+	NUMBER(f64),
 
-    // Keywords.
-    AND,
-    CLASS,
-    ELSE,
-    FALSE,
-    FUN,
-    FOR,
-    IF,
-    NIL,
-    OR,
-    PRINT,
-    RETURN,
-    SUPER,
-    THIS,
-    TRUE,
-    VAR,
-    WHILE,
+	// Keywords.
+	AND,
+	CLASS,
+	ELSE,
+	FALSE,
+	FUN,
+	FOR,
+	IF,
+	NIL,
+	OR,
+	PRINT,
+	RETURN,
+	SUPER,
+	THIS,
+	TRUE,
+	VAR,
+	WHILE,
 
-    // for denoting End of File
-    EOF,
+	// for denoting End of File
+	EOF,
 
-    // while parsing
-    Op,
+	// while parsing
+	Op,
 }
 
 impl Token<'_> {
-    /// This function is a placeholder for unescaping string literals.
-    /// It takes a string slice and returns a `Cow` (Clone on Write) of the unescaped string.
-    /// The `Cow` type allows for efficient handling of borrowed and owned data.
-    pub fn unescape(s: &str) -> Cow<'_, str> {
-        // lox has no escaping, just gotta remove the "
-        // since this has no escaping, the strings can't contain '"', so trim won't print multiple
-        Cow::Borrowed(s.trim_matches('"'))
-    }
+	/// This function is a placeholder for unescaping string literals.
+	/// It takes a string slice and returns a `Cow` (Clone on Write) of the unescaped string.
+	/// The `Cow` type allows for efficient handling of borrowed and owned data.
+	pub fn unescape(s: &str) -> Cow<'_, str> {
+		// lox has no escaping, just gotta remove the "
+		// since this has no escaping, the strings can't contain '"', so trim won't print multiple
+		Cow::Borrowed(s.trim_matches('"'))
+	}
 }
 
 impl fmt::Display for Token<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let origin = self.origin;
-        match self.kind {
-            // Single-character tokens.
-            TokenType::LEFT_PAREN => write!(f, "LEFT_PAREN {origin} null"),
-            TokenType::RIGHT_PAREN => write!(f, "RIGHT_PAREN {origin} null"),
-            TokenType::LEFT_BRACE => write!(f, "LEFT_BRACE {origin} null"),
-            TokenType::RIGHT_BRACE => write!(f, "RIGHT_BRACE {origin} null"),
-            TokenType::COMMA => write!(f, "COMMA {origin} null"),
-            TokenType::DOT => write!(f, "DOT {origin} null"),
-            TokenType::MINUS => write!(f, "MINUS {origin} null"),
-            TokenType::PLUS => write!(f, "PLUS {origin} null"),
-            TokenType::SEMICOLON => write!(f, "SEMICOLON {origin} null"),
-            TokenType::SLASH => write!(f, "SLASH {origin} null"),
-            TokenType::STAR => write!(f, "STAR {origin} null"),
+	fn fmt(
+		&self,
+		f: &mut fmt::Formatter<'_>,
+	) -> fmt::Result {
+		let origin = self.origin;
+		match self.kind {
+			// Single-character tokens.
+			TokenType::LEFT_PAREN => write!(f, "LEFT_PAREN {origin} null"),
+			TokenType::RIGHT_PAREN => write!(f, "RIGHT_PAREN {origin} null"),
+			TokenType::LEFT_BRACE => write!(f, "LEFT_BRACE {origin} null"),
+			TokenType::RIGHT_BRACE => write!(f, "RIGHT_BRACE {origin} null"),
+			TokenType::COMMA => write!(f, "COMMA {origin} null"),
+			TokenType::DOT => write!(f, "DOT {origin} null"),
+			TokenType::MINUS => write!(f, "MINUS {origin} null"),
+			TokenType::PLUS => write!(f, "PLUS {origin} null"),
+			TokenType::SEMICOLON => write!(f, "SEMICOLON {origin} null"),
+			TokenType::SLASH => write!(f, "SLASH {origin} null"),
+			TokenType::STAR => write!(f, "STAR {origin} null"),
 
-            // One or two character tokens.
-            TokenType::BANG => write!(f, "BANG {origin} null"),
-            TokenType::BANG_EQUAL => write!(f, "BANG_EQUAL {origin} null"),
-            TokenType::EQUAL => write!(f, "EQUAL {origin} null"),
-            TokenType::EQUAL_EQUAL => write!(f, "EQUAL_EQUAL {origin} null"),
-            TokenType::GREATER => write!(f, "GREATER {origin} null"),
-            TokenType::GREATER_EQUAL => write!(f, "GREATER_EQUAL {origin} null"),
-            TokenType::LESS => write!(f, "LESS {origin} null"),
-            TokenType::LESS_EQUAL => write!(f, "LESS_EQUAL {origin} null"),
+			// One or two character tokens.
+			TokenType::BANG => write!(f, "BANG {origin} null"),
+			TokenType::BANG_EQUAL => write!(f, "BANG_EQUAL {origin} null"),
+			TokenType::EQUAL => write!(f, "EQUAL {origin} null"),
+			TokenType::EQUAL_EQUAL => write!(f, "EQUAL_EQUAL {origin} null"),
+			TokenType::GREATER => write!(f, "GREATER {origin} null"),
+			TokenType::GREATER_EQUAL => write!(f, "GREATER_EQUAL {origin} null"),
+			TokenType::LESS => write!(f, "LESS {origin} null"),
+			TokenType::LESS_EQUAL => write!(f, "LESS_EQUAL {origin} null"),
 
-            // Literals.
-            TokenType::IDENT => write!(f, "IDENTIFIER {origin} null"),
-            TokenType::STRING => write!(f, "STRING {origin} {}", Token::unescape(origin)),
-            TokenType::NUMBER(n) => {
-                if n.fract() == 0.0
-                {
-                    write!(f, "NUMBER {origin} {n}.0")
-                }
-                else
-                {
-                    write!(f, "NUMBER {origin} {n}")
-                }
-            }// literal and float point number
+			// Literals.
+			TokenType::IDENT => write!(f, "IDENTIFIER {origin} null"),
+			TokenType::STRING => write!(f, "STRING {origin} {}", Token::unescape(origin)),
+			TokenType::NUMBER(n) => {
+				if n.fract() == 0.0 {
+					write!(f, "NUMBER {origin} {n}.0")
+				} else {
+					write!(f, "NUMBER {origin} {n}")
+				}
+			}, // literal and float point number
 
-            // Keywords.
-            TokenType::AND => write!(f, "AND {origin} null"),
-            TokenType::CLASS => write!(f, "CLASS {origin} null"),
-            TokenType::ELSE => write!(f, "ELSE {origin} null"),
-            TokenType::FALSE => write!(f, "FALSE {origin} null"),
-            TokenType::FUN => write!(f, "FUN {origin} null"),
-            TokenType::FOR => write!(f, "FOR {origin} null"),
-            TokenType::IF => write!(f, "IF {origin} null"),
-            TokenType::NIL => write!(f, "NIL {origin} null"),
-            TokenType::OR => write!(f, "OR {origin} null"),
-            TokenType::PRINT => write!(f, "PRINT {origin} null"),
-            TokenType::RETURN => write!(f, "RETURN {origin} null"),
-            TokenType::SUPER => write!(f, "SUPER {origin} null"),
-            TokenType::THIS => write!(f, "THIS {origin} null"),
-            TokenType::TRUE => write!(f, "TRUE {origin} null"),
-            TokenType::VAR => write!(f, "VAR {origin} null"),
-            TokenType::WHILE => write!(f, "WHILE {origin} null"),
+			// Keywords.
+			TokenType::AND => write!(f, "AND {origin} null"),
+			TokenType::CLASS => write!(f, "CLASS {origin} null"),
+			TokenType::ELSE => write!(f, "ELSE {origin} null"),
+			TokenType::FALSE => write!(f, "FALSE {origin} null"),
+			TokenType::FUN => write!(f, "FUN {origin} null"),
+			TokenType::FOR => write!(f, "FOR {origin} null"),
+			TokenType::IF => write!(f, "IF {origin} null"),
+			TokenType::NIL => write!(f, "NIL {origin} null"),
+			TokenType::OR => write!(f, "OR {origin} null"),
+			TokenType::PRINT => write!(f, "PRINT {origin} null"),
+			TokenType::RETURN => write!(f, "RETURN {origin} null"),
+			TokenType::SUPER => write!(f, "SUPER {origin} null"),
+			TokenType::THIS => write!(f, "THIS {origin} null"),
+			TokenType::TRUE => write!(f, "TRUE {origin} null"),
+			TokenType::VAR => write!(f, "VAR {origin} null"),
+			TokenType::WHILE => write!(f, "WHILE {origin} null"),
 
-            // End-of-file token.
-            TokenType::EOF => write!(f, "EOF  null"),
+			// End-of-file token.
+			TokenType::EOF => write!(f, "EOF  null"),
 
-            _ => unimplemented!(),
-        }
-    }
+			_ => unimplemented!(),
+		}
+	}
 }

@@ -1,0 +1,74 @@
+###############
+## Format & Edition
+###############
+
+# Match your Rust edition (inferred from Cargo.toml if omitted)
+# edition = "2024"  
+# Ensure rustfmt uses the same edition for style decisions  
+# style_edition = "2024" 
+
+###############
+## Layout Widths
+###############
+
+# Maximum line width before wrapping  
+max_width = 100 
+# Width at which method call chains break  
+chain_width = 80 
+# Width for arguments in function calls  
+fn_call_width = 80 
+# Width for struct literals before they break to multiple lines  
+struct_lit_width = 60 
+# Width for enum variant variant constructors  
+struct_variant_width = 60 
+
+###############
+## Indentation & Tabs
+###############
+
+hard_tabs = true
+# Number of spaces per tab  
+tab_spaces = 4 
+# Style for indentation (Block vs Visual)  
+# indent_style = "Block" 
+
+# ###############
+# ## Imports
+# ###############
+
+# # Reorder imports alphabetically  
+reorder_imports = true
+# # How granular imports should be (`Crate`, `Module`, `Item`)  
+# imports_granularity = "Crate"
+
+# ###############
+# ## Comments & Strings
+# ###############
+
+# # Wrap long comments at max_width  
+# wrap_comments = true 
+# # Keep doc comments formatted  
+# format_code_in_doc_comments = true
+# # Whether to reflow long string literals (set false to preserve)  
+# format_strings = false 
+
+# ###############
+# ## Miscellaneous
+# ###############
+
+# # Allow shorthand for struct initialization (`Foo { x, y }`)  
+use_field_init_shorthand = true 
+# # Allow `?` instead of `try!`  
+use_try_shorthand = true 
+# # Minimum/maximum blank lines between items  
+# blank_lines_lower_bound = 1 
+# blank_lines_upper_bound = 1 
+
+fn_params_layout = "Vertical"
+match_arm_leading_pipes = "Preserve"
+match_block_trailing_comma = true
+remove_nested_parens = true
+reorder_modules = true
+
+single_line_let_else_max_width = 0
+use_small_heuristics = "Off"

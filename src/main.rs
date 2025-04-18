@@ -1,125 +1,120 @@
 #![allow(unreachable_code)]
 use clap::{Parser, Subcommand}; // command line argument parser
 use codecrafters_interpreter as inp;
+use inp::lexer::Lexer;
+use inp::token_type::{SingleTokenError, StringTerminationError};
 use miette::{IntoDiagnostic, WrapErr};
 use std::fs;
 use std::path::PathBuf;
-use inp::token_type::{SingleTokenError, StringTerminationError};
-use inp::lexer::Lexer;
-
 
 /// type to help us parse the command line arguments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about=None)]
 struct Args {
-    #[command(subcommand)]
-    command: Commands,
+	#[command(subcommand)]
+	command: Commands,
 }
 
 /// holds the Command types argument type
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// takes a file path for tokenization
-    Tokenize { filename: PathBuf },
-    Parse { filename: PathBuf },
-    Run { filename: PathBuf },
+	/// takes a file path for tokenization
+	Tokenize {
+		filename: PathBuf,
+	},
+	Parse {
+		filename: PathBuf,
+	},
+	Run {
+		filename: PathBuf,
+	},
 }
 
 fn main() -> miette::Result<()> {
+	let args = Args::parse();
 
-    let args = Args::parse();
+	let mut erry = false;
 
-    let mut erry = false;
+	match args.command {
+		Commands::Tokenize { filename } => {
+			// You can use print statements as follows for debugging, they'll be visible when running tests.
+			eprintln!("Logs from your program will appear here!");
 
-    match args.command {
+			let file_contents = fs::read_to_string(&filename)
+				.into_diagnostic()
+				.wrap_err_with(|| format!("reading {} file failed!", filename.display()))?;
 
-        Commands::Tokenize { filename } => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            eprintln!("Logs from your program will appear here!");
+			// file_contents.push('\0'); // they don't have it in general files
 
-            let file_contents = fs::read_to_string(&filename)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("reading {} file failed!", filename.display()))?;
+			let lexer = Lexer::new(&file_contents);
 
-            // file_contents.push('\0'); // they don't have it in general files
+			for token in lexer {
+				let token = match token {
+					Ok(t) => t,
+					Err(e) => {
+						eprintln!("{e:?}");
 
-            let lexer = Lexer::new(&file_contents);
+						if let Some(unk) = e.downcast_ref::<SingleTokenError>() {
+							erry = true;
 
-            for token in lexer {
-                let token = match token {
-                    Ok(t) => t,
-                    Err(e) => {
-                        eprintln!("{e:?}");
+							eprintln!(
+								"[line {}] Error: Unexpected character: {}",
+								unk.line(),
+								unk.token
+							);
+						} else if let Some(ust) = e.downcast_ref::<StringTerminationError>() {
+							erry = true;
 
-                        if let Some(unk) = e.downcast_ref::<SingleTokenError>() {
-                            erry = true;
+							eprintln!("[line {}] Error: Unterminated string.", ust.line());
+						}
 
-                            eprintln!(
-                                "[line {}] Error: Unexpected character: {}",
-                                unk.line(),
-                                unk.token
-                            );                            
-                        }
+						continue;
+					},
+				};
 
-                        else if let Some(ust) = e.downcast_ref::<StringTerminationError>() {
-                            erry = true;
+				println!("{token}");
+			}
 
-                            eprintln!(
-                                "[line {}] Error: Unterminated string.",
-                                ust.line()
-                            );
-                        }
+			println!("EOF  null");
 
-                        continue;
+			if erry {
+				std::process::exit(65);
+			}
+		},
 
-                    }
-                };
+		Commands::Parse { filename } => {
+			let file_contents = fs::read_to_string(&filename)
+				.into_diagnostic()
+				.wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
 
-                println!("{token}");
-            }
+			let parser = inp::Parser::new(&file_contents);
 
-            println!("EOF  null");
+			match parser.parse_expression() {
+				Ok(tt) => println!("{tt}"),
+				Err(e) => {
+					// TODO: match error line format
+					eprintln!("{e:?}");
+					std::process::exit(65);
+				},
+			}
+		},
 
-            if erry {
-                std::process::exit(65);
-            }
-        }
+		Commands::Run { filename } => {
+			let file_contents = fs::read_to_string(&filename)
+				.into_diagnostic()
+				.wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
 
+			let parser = inp::Parser::new(&file_contents);
+			println!("{}", parser.parse().unwrap());
+		},
+	}
 
-        Commands::Parse { filename } => {
+	if erry {
+		std::process::exit(65);
+	} else {
+		std::process::exit(0);
+	}
 
-            let file_contents = fs::read_to_string(&filename)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
-
-            let parser = inp::Parser::new(&file_contents);
-
-            match parser.parse_expression() {
-                Ok(tt) => println!("{tt}"),
-                Err(e) => {
-                    // TODO: match error line format
-                    eprintln!("{e:?}");
-                    std::process::exit(65);
-                }
-            }        
-        }
-
-        Commands::Run { filename } => {
-            let file_contents = fs::read_to_string(&filename)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("reading '{}' failed", filename.display()))?;
-
-            let parser = inp::Parser::new(&file_contents);
-            println!("{}", parser.parse().unwrap());
-        }
-    }
-
-    if erry {
-        std::process::exit(65);
-    } else {
-        std::process::exit(0);
-    }
-
-    // dead_code
-    Ok(())
+	// dead_code
+	Ok(())
 }
