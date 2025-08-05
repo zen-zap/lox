@@ -20,7 +20,7 @@ pub struct Lexer<'de> {
 	rest: &'de str,
 	/// to keep track of the index we're at
 	byte: usize,
-	/// holds the peeked tokens
+	/// holds the peeked tokens -- used for lookahead
 	peeked: Option<Result<Token<'de>, miette::Error>>,
 }
 
@@ -42,7 +42,7 @@ impl<'de> Lexer<'de> {
 	pub fn expect_where(
 		&mut self,
 		mut check: impl FnMut(&Token<'de>) -> bool,
-		unexpected: &str,
+		unexpected_msg: &str,
 	) -> Result<Token<'de>, miette::Error> {
 		match self.next() {
 			Some(Ok(token)) if check(&token) => Ok(token),
@@ -52,7 +52,7 @@ impl<'de> Lexer<'de> {
 				],
 
 				help = format!("Expected {token:?}"),
-				"{unexpected}",
+				"{unexpected_msg}",
 			}
 			.with_source_code(self.whole.to_string())),
 			Some(Err(e)) => Err(e),
@@ -66,9 +66,9 @@ impl<'de> Lexer<'de> {
 	pub fn expect(
 		&mut self,
 		expected: TokenType,
-		unexpected: &str,
+		unexpected_msg: &str,
 	) -> Result<Token<'de>, miette::Error> {
-		self.expect_where(|next| next.kind == expected, unexpected)
+		self.expect_where(|next| next.kind == expected, unexpected_msg)
 	}
 
 	/// helper function for peeking into the Lexer tokens
@@ -93,17 +93,18 @@ impl<'de> Iterator for Lexer<'de> {
 	/// Pattern helpful for streaming characters ..
 	/// actual lexing happens here
 	fn next(&mut self) -> Option<Self::Item> {
+
 		if let Some(next) = self.peeked.take() {
 			return Some(next);
 		}
 
 		loop {
 			// must be inside the loop .. since we use chars with byte_index and self.rest updates based on this
-			let mut chars = self.rest.chars();
+			let mut chars = self.rest.chars(); // get the rest of the chars left
 
+            // get the next char
 			let c = chars.next()?;
 			// `at` represents the byte-index where this character begins at the string
-
 			let c_at = self.byte;
 			// holds the current character as a UTF-8 byte slice from the input string
 			let c_str = &self.rest[..c.len_utf8()];
@@ -129,6 +130,11 @@ impl<'de> Iterator for Lexer<'de> {
 			}
 
 			let just = move |kind: TokenType| Some(Ok(Token { kind, offset: c_at, origin: c_str }));
+
+            // TOKEN RECOGNITION
+            //
+            // If it is a normal token or a standalone token, then you just return it as it is 
+            // if not .. start another processing for what's to come
 
 			let started = match c {
 				'(' => return just(TokenType::LEFT_PAREN),
@@ -160,6 +166,8 @@ impl<'de> Iterator for Lexer<'de> {
 					.into()));
 				},
 			};
+
+            // MULTI-CHARACTER TOKENS
 
 			// if started is an Option immediately return, if it's an enum then check for the variants
 			// even if you don't handle the Option case .. it does so implicitly if the things are not in the match arms
@@ -317,7 +325,7 @@ impl<'de> Iterator for Lexer<'de> {
 	}
 }
 
-/// This indicates an EOF Error
+/// This indicates an error caused by unexpected EOF
 #[derive(Diagnostic, Debug, Error)]
 #[error("Unexpected EOF")]
 pub struct Eof;

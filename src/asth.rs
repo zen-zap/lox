@@ -7,10 +7,12 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Atom<'de> {
 	String(Cow<'de, str>),
+    /// f64
 	Number(f64),
 	Nil,
 	Bool(bool),
-	Ident(&'de str),
+	/// Identifier
+    Ident(&'de str),
 	Super,
 	This,
 }
@@ -108,14 +110,15 @@ impl fmt::Display for Op {
 	}
 }
 
+/// Represents different nodes from the AST
 #[derive(Debug, PartialEq, Clone)]
-/// holds the variants for the expression?
 pub enum TokenTree<'de> {
-	/// represents a single character
+	/// represents literals, strings, etc. check out what Atom is
 	Atom(Atom<'de>),
-	/// represents the `head` -> `rest`
+	// represents the `head` -> `rest`
+    /// it represents an operator and its operands
 	Cons(Op, Vec<TokenTree<'de>>),
-	/// for representing the function blocks
+	/// for representing the function blocks/definition
 	Fun {
 		name: Atom<'de>,
 		parameters: Vec<Token<'de>>,

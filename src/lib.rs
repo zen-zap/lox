@@ -1,5 +1,7 @@
 pub mod asth;
 pub mod binds;
+pub mod err;
+pub mod evaluator;
 pub mod lexer;
 pub mod parser;
 pub mod token_type;

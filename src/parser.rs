@@ -1,4 +1,4 @@
-// src/parser.rs
+//! src/parser.rs
 
 use crate::asth::{Atom, Op, TokenTree};
 use crate::binds::{infix_binding_power, postfix_binding_power, prefix_binding_power};
@@ -32,10 +32,16 @@ impl<'de> Parser<'de> {
 		self.parse_statement_within(0)
 	}
 
+    /// function to parse an expression
+    ///
+    /// calls parse_expression_within internally with min_bp as 0
 	pub fn parse_expression(mut self) -> Result<TokenTree<'de>, Error> {
 		self.parse_expression_within(0)
 	}
 
+    /// function to parse the arguments passed to a funciton
+    ///
+    /// returns a Result<Vec<TokenTree<'de>>, Error>
 	pub fn parse_fun_call_arguments(&mut self) -> Result<Vec<TokenTree<'de>>, Error> {
 		let mut arguments = Vec::new();
 
@@ -67,6 +73,7 @@ impl<'de> Parser<'de> {
 		Ok(arguments)
 	}
 
+    /// function to parse a block of text enclosed in Left and Right Braces
 	pub fn parse_block(&mut self) -> Result<TokenTree<'de>, Error> {
 		self.lexer.expect(TokenType::LEFT_BRACE, "missing {")?;
 		let block = self.parse_statement_within(0)?;
@@ -78,10 +85,15 @@ impl<'de> Parser<'de> {
 		Ok(block)
 	}
 
+    /// parses an expression
+    ///
+    /// takes min_bp as parameter
+    /// bp -> binding power
 	pub fn parse_expression_within(
 		&mut self,
 		min_bp: u8,
 	) -> Result<TokenTree<'de>, Error> {
+
 		let lhs = match self.lexer.next() {
 			Some(Ok(token)) => token,
 			None => return Ok(TokenTree::Atom(Atom::Nil)),
@@ -112,6 +124,8 @@ impl<'de> Parser<'de> {
 
 			// groups
 			Token { kind: TokenType::LEFT_PAREN, origin: _, .. } => {
+
+                // get the token tree for the content inside this parenthesis
 				let lhs = self.parse_expression_within(0).wrap_err("in bracketed expression")?;
 
 				self.lexer

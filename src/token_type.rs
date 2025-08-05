@@ -84,6 +84,7 @@ pub enum TokenType {
 	LESS_EQUAL,
 
 	// Literals.
+    /// Identifier
 	IDENT,
 	STRING,
 	NUMBER(f64),
